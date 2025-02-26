@@ -13,7 +13,11 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ```{r rdataimport}
-summary(cars)
+survey_data <- read.csv("survey_results_public.csv")
+schema_data <- read.csv("survey_results_schema.csv")
+save(survey_data, schema_data, file = "survey_data.RData")
+
+
 ```
 
 
