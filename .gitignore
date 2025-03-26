@@ -2,3 +2,5 @@
 .Rhistory
 .RData
 .Ruserdata
+survey_results_schema.csv
+survey_results_public.csv
