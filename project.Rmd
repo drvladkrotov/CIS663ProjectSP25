@@ -1,5 +1,5 @@
 ---
-title: "project"
+title: "CIS663ProjectSP25"
 author: "Vlad Krotov"
 date: "2025-02-26"
 output: word_document
@@ -21,22 +21,144 @@ save(survey_data, schema_data, file = "survey_data.RData")
 ```
 
 
-## R Markdown
+```{r load-data, message=FALSE, warning=FALSE}
+# Load the dataset
+load("survey_data.RData")
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+# Check what objects were loaded
+ls()
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+# View dataset structure
+str(survey_data)  # Correcting the mistake
 
-```{r cars}
-summary(cars)
+# View first few rows
+head(survey_data)
+
+```
+```{r}
+# Display all column names
+colnames(survey_data)
 ```
 
-## Including Plots
+```{r}
+# Install required packages
+#install.packages("tidyverse") 
+# Load libraries
+library(tidyverse)
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+# Selecting relevant columns based on project focus
+selected_columns <- c("ResponseId", "Age", "Country", "EdLevel", "Employment", 
+                      "DevType", "YearsCodePro", "ConvertedCompYearly", "JobSat")
+survey_data_selected <- survey_data[selected_columns]
+
+```
+
+
+
+```{r}
+# Checking data after selection
+str(survey_data_selected)
+head(survey_data_selected)
+```
+
+
+```{r}
+# Checking the number of missing values per column
+colSums(is.na(survey_data_selected))
+```
+
+```{r}
+# Dropping rows with missing Country (since it's a small number)
+survey_data_selected <- survey_data_selected %>% drop_na(Country)
+
+```
+
+```{r}
+# Imputing missing education level with most common category (mode)
+most_common_edu <- names(sort(table(survey_data_selected$EdLevel), decreasing = TRUE))[1]
+survey_data_selected$EdLevel[is.na(survey_data_selected$EdLevel)] <- most_common_edu
+
+```
+
+```{r}
+# Convert YearsCodePro to numeric
+survey_data_selected$YearsCodePro <- as.numeric(gsub("[^0-9]", "", survey_data_selected$YearsCodePro))
+
+# Check
+str(survey_data_selected$YearsCodePro)
+```
+
+
+```{r}
+# Handling missing DevType (replace with 'Unknown' instead of dropping)
+survey_data_selected$DevType[is.na(survey_data_selected$DevType)] <- "Unknown"
+
+# Imputing missing YearsCodePro with median
+median_experience <- median(survey_data_selected$YearsCodePro, na.rm = TRUE)
+survey_data_selected$YearsCodePro[is.na(survey_data_selected$YearsCodePro)] <- median_experience
+
+```
+
+
+```{r}
+# Imputing missing ConvertedCompYearly (salary) with median
+median_salary <- median(survey_data_selected$ConvertedCompYearly, na.rm = TRUE)
+survey_data_selected$ConvertedCompYearly[is.na(survey_data_selected$ConvertedCompYearly)] <- median_salary
+
+# Imputing missing JobSat (job satisfaction) with most frequent value (mode)
+most_common_jobsat <- names(sort(table(survey_data_selected$JobSat), decreasing = TRUE))[1]
+survey_data_selected$JobSat[is.na(survey_data_selected$JobSat)] <- most_common_jobsat
+
+# Final check for remaining missing values
+colSums(is.na(survey_data_selected))
+
+```
+
+```{r}
+# Save cleaned dataset
+save(survey_data_selected, file = "tidy_survey_data_cleaned.RData")
+```
+
+```{r}
+# Reload to confirm it saved properly
+load("tidy_survey_data_cleaned.RData")
+head(survey_data_selected)
+```
+
+
+```{r}
+# Encoding Employment as binary variable (1 = Full-time, 0 = Others)
+survey_data_selected <- survey_data_selected %>%
+  mutate(is_employed = ifelse(Employment == "Employed, full-time", 1, 0))
+```
+
+```{r}
+survey_data_selected <- survey_data_selected %>%
+  mutate(Ed_Bachelor = ifelse(EdLevel == "Bachelor’s degree (B.A., B.S., B.Eng., etc.)", 1, 0),
+         Ed_Master = ifelse(EdLevel == "Master’s degree (M.A., M.S., M.Eng., MBA, etc.)", 1, 0),
+         Ed_Doctoral = ifelse(EdLevel == "Professional degree (JD, MD, Ph.D, Ed.D, etc.)", 1, 0))
+
+```
+
+```{r}
+# Checking final structure
+str(survey_data_selected)
+head(survey_data_selected)
+```
+```{r}
+# Saving cleaned data
+save(survey_data_selected, file = "tidy_survey_data_cleaned.RData")
+
+# Reloading to confirm it works
+load("tidy_survey_data_cleaned.RData")
+head(survey_data_selected)
+```
+
+
+
+```
+
+
