@@ -50,8 +50,8 @@ library(tidyverse)
 
 ```{r}
 # Selecting relevant columns based on project focus
-selected_columns <- c("ResponseId", "Age", "Country", "EdLevel", "Employment", 
-                      "DevType", "YearsCodePro", "ConvertedCompYearly", "JobSat")
+selected_columns <- c("Age", "Country", "EdLevel", "Employment", 
+                      "DevType", "YearsCodePro", "ConvertedCompYearly", "JobSat","WorkExp")
 survey_data_selected <- survey_data[selected_columns]
 
 ```
@@ -74,6 +74,15 @@ colSums(is.na(survey_data_selected))
 # Dropping rows with missing Country (since it's a small number)
 survey_data_selected <- survey_data_selected %>% drop_na(Country)
 
+```
+
+```{r}
+# Filter for only united states
+survey_data_selected <- survey_data_selected %>% filter(Country == "United States of America")
+# Drop the Country column since it's no longer needed
+survey_data_selected <- survey_data_selected %>% select(-Country)
+# Check for the number of missing values again
+colSums(is.na(survey_data_selected))
 ```
 
 ```{r}
@@ -112,6 +121,10 @@ survey_data_selected$ConvertedCompYearly[is.na(survey_data_selected$ConvertedCom
 most_common_jobsat <- names(sort(table(survey_data_selected$JobSat), decreasing = TRUE))[1]
 survey_data_selected$JobSat[is.na(survey_data_selected$JobSat)] <- most_common_jobsat
 
+#Imputing missing WorkExp with median
+median_workexp <- median(survey_data_selected$WorkExp, na.rm = TRUE)
+survey_data_selected$WorkExp[is.na(survey_data_selected$WorkExp)] <- median_workexp
+
 # Final check for remaining missing values
 colSums(is.na(survey_data_selected))
 
@@ -119,27 +132,33 @@ colSums(is.na(survey_data_selected))
 
 ```{r}
 # Save cleaned dataset
-save(survey_data_selected, file = "tidy_survey_data_cleaned.RData")
+save(survey_data_selected, file = "survey_data_cleaned.RData")
 ```
 
 ```{r}
 # Reload to confirm it saved properly
-load("tidy_survey_data_cleaned.RData")
+load("survey_data_cleaned.RData")
 head(survey_data_selected)
 ```
 
 
 ```{r}
-# Encoding Employment as binary variable (1 = Full-time, 0 = Others)
+# Encoding Employment as binary variable (1 if employed or Independent contractor, 0 otherwise)
 survey_data_selected <- survey_data_selected %>%
-  mutate(is_employed = ifelse(Employment == "Employed, full-time", 1, 0))
+  mutate(is_Employed = ifelse(Employment %in% c("Employed, full-time", "Employed, part-time", "Independent contractor, freelancer, or self-employed"), 1, 0))
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 ```{r}
+# Encoding Education Level as binary variables leaving "Something else" as reference category
 survey_data_selected <- survey_data_selected %>%
   mutate(Ed_Bachelor = ifelse(EdLevel == "Bachelor’s degree (B.A., B.S., B.Eng., etc.)", 1, 0),
          Ed_Master = ifelse(EdLevel == "Master’s degree (M.A., M.S., M.Eng., MBA, etc.)", 1, 0),
-         Ed_Doctoral = ifelse(EdLevel == "Professional degree (JD, MD, Ph.D, Ed.D, etc.)", 1, 0))
+         Ed_Doctoral = ifelse(EdLevel == "Professional degree (JD, MD, Ph.D, Ed.D, etc.)", 1, 0),
+         Ed_Associate = ifelse(EdLevel == "Associate degree", 1, 0),
+         Ed_Other = ifelse(EdLevel == "Some college/university study without earning a degree", 1, 0),
+         Ed_HighSchool = ifelse(EdLevel == "Secondary school (e.g. American high school, German Realschule or Gymnasium, etc.)", 1, 0),
+         Ed_Primary = ifelse(EdLevel == "Primary/elementary school", 1, 0))
 
 ```
 
