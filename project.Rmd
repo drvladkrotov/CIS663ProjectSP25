@@ -141,24 +141,77 @@ load("survey_data_cleaned.RData")
 head(survey_data_selected)
 ```
 
+```{r}
+# Clean the Employment column
+survey_data_selected <- survey_data_selected %>%
+  mutate(
+    # Normalize separators and whitespace
+    Employment = str_replace_all(Employment, "\\s*;\\s*", ";"),
+    Employment = str_trim(Employment),
+    # Split into list column
+    Employment_split = strsplit(Employment, ";")
+  ) %>%
+  # Trim whitespace for individual employment types
+  mutate(Employment_split = map(Employment_split, ~ str_trim(.x)))
+
+# Get unique employment types
+employment_types <- survey_data_selected$Employment_split %>%
+  unlist() %>%
+  unique() %>%
+  sort()
+
+# Drop I prefer not to say from employment types because it is vague and only represents small portion of data
+employment_types <- employment_types[employment_types != "I prefer not to say"]
+
+# Create binary columns
+for (type in employment_types) {
+  survey_data_selected[[type]] <- as.integer(
+    sapply(survey_data_selected$Employment_split, function(x) type %in% x)
+  )
+}
+
+# Remove intermediate columns (only for Option 2)
+survey_data_selected <- survey_data_selected %>%
+  select(-Employment_split)
+```
+
 
 ```{r}
-# Encoding Employment as binary variable (1 if employed or Independent contractor, 0 otherwise)
+# Drop records with Something else in EdLevel
 survey_data_selected <- survey_data_selected %>%
-  mutate(is_Employed = ifelse(Employment %in% c("Employed, full-time", "Employed, part-time", "Independent contractor, freelancer, or self-employed"), 1, 0))
-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+  filter(EdLevel != "Something else")
+
+# Encode Education Level as ranked numeric variable
+survey_data_selected <- survey_data_selected %>%
+  mutate(EdLevel = as.numeric(factor(EdLevel, levels = c(
+    "Primary/elementary school",
+    "Secondary school (e.g. American high school, German Realschule or Gymnasium, etc.)",
+    "Some college/university study without earning a degree",
+    "Associate degree (A.A., A.S., etc.)",
+    "Bachelor’s degree (B.A., B.S., B.Eng., etc.)",
+    "Master’s degree (M.A., M.S., M.Eng., MBA, etc.)",
+    "Professional degree (JD, MD, Ph.D, Ed.D, etc.)"
+  ), ordered = TRUE)))
+
 ```
 
 ```{r}
-# Encoding Education Level as binary variables leaving "Something else" as reference category
+# drop Age that is prefer not to say since its vague and only represents small portion of data
 survey_data_selected <- survey_data_selected %>%
-  mutate(Ed_Bachelor = ifelse(EdLevel == "Bachelor’s degree (B.A., B.S., B.Eng., etc.)", 1, 0),
-         Ed_Master = ifelse(EdLevel == "Master’s degree (M.A., M.S., M.Eng., MBA, etc.)", 1, 0),
-         Ed_Doctoral = ifelse(EdLevel == "Professional degree (JD, MD, Ph.D, Ed.D, etc.)", 1, 0),
-         Ed_Associate = ifelse(EdLevel == "Associate degree", 1, 0),
-         Ed_Other = ifelse(EdLevel == "Some college/university study without earning a degree", 1, 0),
-         Ed_HighSchool = ifelse(EdLevel == "Secondary school (e.g. American high school, German Realschule or Gymnasium, etc.)", 1, 0),
-         Ed_Primary = ifelse(EdLevel == "Primary/elementary school", 1, 0))
+  filter(Age != "Prefer not to say")
+
+#Encode Age as ranked numeric variable
+survey_data_selected <- survey_data_selected %>%
+  mutate(Age = as.numeric(factor(Age, levels = c(
+    "Under 18 years old",
+    "18-24 years old",
+    "25-34 years old",
+    "35-44 years old",
+    "45-54 years old",
+    "55-64 years old",
+    "65 years or older"
+  ), ordered = TRUE)))
+
 
 ```
 
@@ -166,18 +219,9 @@ survey_data_selected <- survey_data_selected %>%
 # Checking final structure
 str(survey_data_selected)
 head(survey_data_selected)
-```
-```{r}
-# Saving cleaned data
-save(survey_data_selected, file = "tidy_survey_data_cleaned.RData")
 
-# Reloading to confirm it works
-load("tidy_survey_data_cleaned.RData")
-head(survey_data_selected)
-```
-
-
-
+# Saving cleaned encoded data
+save(survey_data_selected, file = "survey_data_cleaned_encoded.RData")
 ```
 
 
