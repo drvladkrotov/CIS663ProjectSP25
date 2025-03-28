@@ -216,6 +216,11 @@ survey_data_selected <- survey_data_selected %>%
 ```
 
 ```{r}
+# Change Job Satisfaction to numeric variable
+survey_data_selected$JobSat <- as.numeric(survey_data_selected$JobSat)
+```
+
+```{r}
 # Checking final structure
 str(survey_data_selected)
 head(survey_data_selected)
