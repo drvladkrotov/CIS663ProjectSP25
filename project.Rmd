@@ -42,7 +42,7 @@ colnames(survey_data)
 
 ```{r}
 # Install required packages
-#install.packages("tidyverse") 
+install.packages("tidyverse") 
 # Load libraries
 library(tidyverse)
 
@@ -71,8 +71,10 @@ colSums(is.na(survey_data_selected))
 ```
 
 ```{r}
-# Dropping rows with missing Country (since it's a small number)
-survey_data_selected <- survey_data_selected %>% drop_na(Country)
+# Drop all missing values
+survey_data_selected <- survey_data_selected %>% drop_na()
+# Check the number of missing values again
+colSums(is.na(survey_data_selected))
 
 ```
 
@@ -81,54 +83,28 @@ survey_data_selected <- survey_data_selected %>% drop_na(Country)
 survey_data_selected <- survey_data_selected %>% filter(Country == "United States of America")
 # Drop the Country column since it's no longer needed
 survey_data_selected <- survey_data_selected %>% select(-Country)
-# Check for the number of missing values again
-colSums(is.na(survey_data_selected))
-```
-
-```{r}
-# Imputing missing education level with most common category (mode)
-most_common_edu <- names(sort(table(survey_data_selected$EdLevel), decreasing = TRUE))[1]
-survey_data_selected$EdLevel[is.na(survey_data_selected$EdLevel)] <- most_common_edu
-
 ```
 
 ```{r}
 # Convert YearsCodePro to numeric
 survey_data_selected$YearsCodePro <- as.numeric(gsub("[^0-9]", "", survey_data_selected$YearsCodePro))
 
-# Check
-str(survey_data_selected$YearsCodePro)
-```
+# Convert JobSat to numeric
+survey_data_selected$JobSat <- as.numeric(gsub("[^0-9]", "", survey_data_selected$JobSat))
 
+# Convert ConvertedCompYearly to numeric
+survey_data_selected$ConvertedCompYearly <- as.numeric(gsub("[^0-9]", "", survey_data_selected$ConvertedCompYearly))
 
-```{r}
-# Handling missing DevType (replace with 'Unknown' instead of dropping)
-survey_data_selected$DevType[is.na(survey_data_selected$DevType)] <- "Unknown"
+# Convert WorkExp to numeric
+survey_data_selected$WorkExp <- as.numeric(gsub("[^0-9]", "", survey_data_selected$WorkExp))
 
-# Imputing missing YearsCodePro with median
-median_experience <- median(survey_data_selected$YearsCodePro, na.rm = TRUE)
-survey_data_selected$YearsCodePro[is.na(survey_data_selected$YearsCodePro)] <- median_experience
-
-```
-
-
-```{r}
-# Imputing missing ConvertedCompYearly (salary) with median
-median_salary <- median(survey_data_selected$ConvertedCompYearly, na.rm = TRUE)
-survey_data_selected$ConvertedCompYearly[is.na(survey_data_selected$ConvertedCompYearly)] <- median_salary
-
-# Imputing missing JobSat (job satisfaction) with most frequent value (mode)
-most_common_jobsat <- names(sort(table(survey_data_selected$JobSat), decreasing = TRUE))[1]
-survey_data_selected$JobSat[is.na(survey_data_selected$JobSat)] <- most_common_jobsat
-
-#Imputing missing WorkExp with median
-median_workexp <- median(survey_data_selected$WorkExp, na.rm = TRUE)
-survey_data_selected$WorkExp[is.na(survey_data_selected$WorkExp)] <- median_workexp
-
-# Final check for remaining missing values
-colSums(is.na(survey_data_selected))
+# Check the structure of the dataset after conversion
+str(survey_data_selected)
+# Check the first few rows
+head(survey_data_selected)
 
 ```
+
 
 ```{r}
 # Save cleaned dataset
@@ -136,9 +112,13 @@ save(survey_data_selected, file = "survey_data_cleaned.RData")
 ```
 
 ```{r}
-# Reload to confirm it saved properly
+# Load the cleaned dataset
 load("survey_data_cleaned.RData")
+# Check the structure of the cleaned dataset
+str(survey_data_selected)
+# Check the first few rows
 head(survey_data_selected)
+
 ```
 
 ```{r}
@@ -170,7 +150,7 @@ for (type in employment_types) {
   )
 }
 
-# Remove intermediate columns (only for Option 2)
+# Remove intermediate columns 
 survey_data_selected <- survey_data_selected %>%
   select(-Employment_split)
 ```
