@@ -102,7 +102,6 @@ survey_data_selected$WorkExp <- as.numeric(gsub("[^0-9]", "", survey_data_select
 str(survey_data_selected)
 # Check the first few rows
 head(survey_data_selected)
-
 ```
 
 
@@ -121,6 +120,37 @@ head(survey_data_selected)
 
 ```
 
+```{r}
+# clean devtype column
+survey_data_selected <- survey_data_selected %>%
+  mutate(
+    # Normalize separators and whitespace
+    DevType = str_replace_all(DevType, "\\s*;\\s*", ";"),
+    DevType = str_trim(DevType),
+    # Split into list column
+    DevType_split = strsplit(DevType, ";")
+  ) %>%
+  # Trim whitespace for individual dev types
+  mutate(DevType_split = map(DevType_split, ~ str_trim(.x)))
+# Get unique dev types
+dev_types <- survey_data_selected$DevType_split %>%
+  unlist() %>%
+  unique() %>%
+  sort()
+# Drop I prefer not to say from dev types because it is vague and only represents small portion of data
+dev_types <- dev_types[dev_types != "I prefer not to say"]
+# Create one dummy variable where dev type containing "Developer" is 1 and all others are 0
+survey_data_selected$DevType_Developer <- as.integer(
+  sapply(survey_data_selected$DevType_split, function(x) any(grepl("Developer", x)))
+)
+# drop intermediate columns
+survey_data_selected <- survey_data_selected %>%
+  select(-DevType_split)
+
+
+
+```
+*Here*
 ```{r}
 # Clean the Employment column
 survey_data_selected <- survey_data_selected %>%
