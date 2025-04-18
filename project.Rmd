@@ -44,7 +44,7 @@ colnames(survey_data)
 
 ```{r}
 # Install required packages
-#install.packages("tidyverse") 
+install.packages("tidyverse") 
 # Load libraries
 library(tidyverse)
 
@@ -152,6 +152,7 @@ survey_data_selected <- survey_data_selected %>%
 
 
 ```
+<<<<<<< HEAD
 
 
 ```{r}
@@ -161,6 +162,41 @@ survey_data_selected <- survey_data_selected %>%
     is_employed_full_time = ifelse(Employment == "Employed, full-time", 1, 0)
   ) %>%
   select(-Employment)
+=======
+*Here*
+```{r}
+# Clean the Employment column
+survey_data_selected <- survey_data_selected %>%
+  mutate(
+    # Normalize separators and whitespace
+    Employment = str_replace_all(Employment, "\\s*;\\s*", ";"),
+    Employment = str_trim(Employment),
+    # Split into list column
+    Employment_split = strsplit(Employment, ";")
+  ) %>%
+  # Trim whitespace for individual employment types
+  mutate(Employment_split = map(Employment_split, ~ str_trim(.x)))
+
+# Get unique employment types
+employment_types <- survey_data_selected$Employment_split %>%
+  unlist() %>%
+  unique() %>%
+  sort()
+
+# Drop I prefer not to say from employment types because it is vague and only represents small portion of data
+employment_types <- employment_types[employment_types != "I prefer not to say"]
+
+# Create binary columns
+for (type in employment_types) {
+  survey_data_selected[[type]] <- as.integer(
+    sapply(survey_data_selected$Employment_split, function(x) type %in% x)
+  )
+}
+
+# Remove intermediate columns 
+survey_data_selected <- survey_data_selected %>%
+  select(-Employment_split)
+>>>>>>> 5746a05f6fe095e6ab6d57e98e109365ac235c17
 ```
 
 
