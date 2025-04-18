@@ -35,6 +35,8 @@ str(survey_data)  # Correcting the mistake
 head(survey_data)
 
 ```
+
+
 ```{r}
 # Display all column names
 colnames(survey_data)
@@ -50,8 +52,8 @@ library(tidyverse)
 
 ```{r}
 # Selecting relevant columns based on project focus
-selected_columns <- c("ResponseId", "Age", "Country", "EdLevel", "Employment", 
-                      "DevType", "YearsCodePro", "ConvertedCompYearly", "JobSat")
+selected_columns <- c("Age", "Country", "EdLevel", "Employment", 
+                      "DevType", "YearsCodePro", "ConvertedCompYearly", "JobSat","WorkExp")
 survey_data_selected <- survey_data[selected_columns]
 
 ```
@@ -71,94 +73,147 @@ colSums(is.na(survey_data_selected))
 ```
 
 ```{r}
-# Dropping rows with missing Country (since it's a small number)
-survey_data_selected <- survey_data_selected %>% drop_na(Country)
+# Drop all missing values
+survey_data_selected <- survey_data_selected %>% drop_na()
+# Check the number of missing values again
+colSums(is.na(survey_data_selected))
 
 ```
 
 ```{r}
-# Imputing missing education level with most common category (mode)
-most_common_edu <- names(sort(table(survey_data_selected$EdLevel), decreasing = TRUE))[1]
-survey_data_selected$EdLevel[is.na(survey_data_selected$EdLevel)] <- most_common_edu
-
+# Filter for only united states
+survey_data_selected <- survey_data_selected %>% filter(Country == "United States of America")
+# Drop the Country column since it's no longer needed
+survey_data_selected <- survey_data_selected %>% select(-Country)
 ```
 
 ```{r}
 # Convert YearsCodePro to numeric
 survey_data_selected$YearsCodePro <- as.numeric(gsub("[^0-9]", "", survey_data_selected$YearsCodePro))
 
-# Check
-str(survey_data_selected$YearsCodePro)
-```
+# Convert JobSat to numeric
+survey_data_selected$JobSat <- as.numeric(gsub("[^0-9]", "", survey_data_selected$JobSat))
 
+# Convert ConvertedCompYearly to numeric
+survey_data_selected$ConvertedCompYearly <- as.numeric(gsub("[^0-9]", "", survey_data_selected$ConvertedCompYearly))
 
-```{r}
-# Handling missing DevType (replace with 'Unknown' instead of dropping)
-survey_data_selected$DevType[is.na(survey_data_selected$DevType)] <- "Unknown"
+# Convert WorkExp to numeric
+survey_data_selected$WorkExp <- as.numeric(gsub("[^0-9]", "", survey_data_selected$WorkExp))
 
-# Imputing missing YearsCodePro with median
-median_experience <- median(survey_data_selected$YearsCodePro, na.rm = TRUE)
-survey_data_selected$YearsCodePro[is.na(survey_data_selected$YearsCodePro)] <- median_experience
-
-```
-
-
-```{r}
-# Imputing missing ConvertedCompYearly (salary) with median
-median_salary <- median(survey_data_selected$ConvertedCompYearly, na.rm = TRUE)
-survey_data_selected$ConvertedCompYearly[is.na(survey_data_selected$ConvertedCompYearly)] <- median_salary
-
-# Imputing missing JobSat (job satisfaction) with most frequent value (mode)
-most_common_jobsat <- names(sort(table(survey_data_selected$JobSat), decreasing = TRUE))[1]
-survey_data_selected$JobSat[is.na(survey_data_selected$JobSat)] <- most_common_jobsat
-
-# Final check for remaining missing values
-colSums(is.na(survey_data_selected))
-
-```
-
-```{r}
-# Save cleaned dataset
-save(survey_data_selected, file = "tidy_survey_data_cleaned.RData")
-```
-
-```{r}
-# Reload to confirm it saved properly
-load("tidy_survey_data_cleaned.RData")
+# Check the structure of the dataset after conversion
+str(survey_data_selected)
+# Check the first few rows
 head(survey_data_selected)
 ```
 
 
 ```{r}
-# Encoding Employment as binary variable (1 = Full-time, 0 = Others)
-survey_data_selected <- survey_data_selected %>%
-  mutate(is_employed = ifelse(Employment == "Employed, full-time", 1, 0))
+# Save cleaned dataset
+save(survey_data_selected, file = "survey_data_cleaned.RData")
 ```
 
 ```{r}
-survey_data_selected <- survey_data_selected %>%
-  mutate(Ed_Bachelor = ifelse(EdLevel == "Bachelor’s degree (B.A., B.S., B.Eng., etc.)", 1, 0),
-         Ed_Master = ifelse(EdLevel == "Master’s degree (M.A., M.S., M.Eng., MBA, etc.)", 1, 0),
-         Ed_Doctoral = ifelse(EdLevel == "Professional degree (JD, MD, Ph.D, Ed.D, etc.)", 1, 0))
+# Load the cleaned dataset
+load("survey_data_cleaned.RData")
+# Check the structure of the cleaned dataset
+str(survey_data_selected)
+# Check the first few rows
+head(survey_data_selected)
 
+```
+
+```{r}
+# clean devtype column
+survey_data_selected <- survey_data_selected %>%
+  mutate(
+    # Normalize separators and whitespace
+    DevType = str_replace_all(DevType, "\\s*;\\s*", ";"),
+    DevType = str_trim(DevType),
+    # Split into list column
+    DevType_split = strsplit(DevType, ";")
+  ) %>%
+  # Trim whitespace for individual dev types
+  mutate(DevType_split = map(DevType_split, ~ str_trim(.x)))
+# Get unique dev types
+dev_types <- survey_data_selected$DevType_split %>%
+  unlist() %>%
+  unique() %>%
+  sort()
+# Drop I prefer not to say from dev types because it is vague and only represents small portion of data
+dev_types <- dev_types[dev_types != "I prefer not to say"]
+# Create one dummy variable where dev type containing "Developer" is 1 and all others are 0
+survey_data_selected$DevType_Developer <- as.integer(
+  sapply(survey_data_selected$DevType_split, function(x) any(grepl("Developer", x)))
+)
+# drop intermediate columns
+survey_data_selected <- survey_data_selected %>%
+  select(-DevType_split)
+
+
+
+```
+
+
+```{r}
+# Recode Employment into binary: 1 = Employed full-time, 0 = all other statuses
+survey_data_selected <- survey_data_selected %>%
+  mutate(
+    is_employed_full_time = ifelse(Employment == "Employed, full-time", 1, 0)
+  ) %>%
+  select(-Employment)
+```
+
+
+```{r}
+# Drop records with Something else in EdLevel
+survey_data_selected <- survey_data_selected %>%
+  filter(EdLevel != "Something else")
+
+# Encode Education Level as ranked numeric variable
+survey_data_selected <- survey_data_selected %>%
+  mutate(EdLevel = as.numeric(factor(EdLevel, levels = c(
+    "Primary/elementary school",
+    "Secondary school (e.g. American high school, German Realschule or Gymnasium, etc.)",
+    "Some college/university study without earning a degree",
+    "Associate degree (A.A., A.S., etc.)",
+    "Bachelor’s degree (B.A., B.S., B.Eng., etc.)",
+    "Master’s degree (M.A., M.S., M.Eng., MBA, etc.)",
+    "Professional degree (JD, MD, Ph.D, Ed.D, etc.)"
+  ), ordered = TRUE)))
+
+```
+
+```{r}
+# drop Age that is prefer not to say since its vague and only represents small portion of data
+survey_data_selected <- survey_data_selected %>%
+  filter(Age != "Prefer not to say")
+
+#Encode Age as ranked numeric variable
+survey_data_selected <- survey_data_selected %>%
+  mutate(Age = as.numeric(factor(Age, levels = c(
+    "Under 18 years old",
+    "18-24 years old",
+    "25-34 years old",
+    "35-44 years old",
+    "45-54 years old",
+    "55-64 years old",
+    "65 years or older"
+  ), ordered = TRUE)))
+
+
+```
+
+```{r}
+# Change Job Satisfaction to numeric variable
+survey_data_selected$JobSat <- as.numeric(survey_data_selected$JobSat)
 ```
 
 ```{r}
 # Checking final structure
 str(survey_data_selected)
 head(survey_data_selected)
+
+# Saving cleaned encoded data
+save(survey_data_selected, file = "survey_data_cleaned_encoded.RData")
 ```
-```{r}
-# Saving cleaned data
-save(survey_data_selected, file = "tidy_survey_data_cleaned.RData")
-
-# Reloading to confirm it works
-load("tidy_survey_data_cleaned.RData")
-head(survey_data_selected)
-```
-
-
-
-```
-
 
