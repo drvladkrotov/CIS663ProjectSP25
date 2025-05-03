@@ -68,7 +68,6 @@ head(survey_data_selected)
 ```{r}
 # Checking the number of missing values per column
 colSums(is.na(survey_data_selected))
-
 ```
 
 ```{r}
@@ -309,8 +308,6 @@ ggplot(survey_data_selected, aes(x = JobSat)) +
   geom_bar() +
   labs(title = "Job Satisfaction Distribution", x = "Job Satisfaction", y = "Count") +
   theme_minimal()
-# Display summary statistics for JobSat
-summary(survey_data_selected$JobSat)
 
 
 # perform regression analysis with JobSat as dependent variable using stepwise regression
@@ -319,7 +316,6 @@ library(MASS)
 stepwise_model_both <- stepAIC(lm(JobSat ~ ., data = survey_data_selected), direction = "both")
 # Display the summary of the both direction stepwise model
 summary(stepwise_model_both)
-stargazer(stepwise_model_both, type = "text", align=TRUE)
 
 # Explore the relationship between JobSat and ConvertedCompYearly
 ggplot(survey_data_selected, aes(x = ConvertedCompYearly, y = JobSat)) +
@@ -424,6 +420,36 @@ ggplot(survey_data_selected, aes(x = ConvertedCompYearly, fill = as.factor(EdLev
   labs(title = "Yearly Compensation by Education Level", x = "Yearly Compensation", y = "Count") +
   theme_minimal() +
   scale_fill_discrete(name = "Education Level")
-# scatter plot age and compensation
+```
+
+```{r}
+# Perform Quadratic regression analysis with ConvertedCompYearly as dependent variable
+survey_data_selected$Age_squared <- survey_data_selected$Age^2
+survey_data_selected$YearsCodePro_squared <- survey_data_selected$YearsCodePro^2
+survey_data_selected$WorkExp_squared <- survey_data_selected$WorkExp^2
+survey_data_selected$ConvertedCompYearly_squared <- survey_data_selected$ConvertedCompYearly^2
+survey_data_selected$JobSat_squared <- survey_data_selected$JobSat^2
+survey_data_selected$EdLevel_squared <- survey_data_selected$EdLevel^2
+survey_data_selected$DevType_Developer_squared <- survey_data_selected$DevType_Developer^2
+survey_data_selected$Employed_full_time_squared <- survey_data_selected$Employed_full_time^2
+
+# Perform stepwise regression with both directions
+library(MASS)
+library(stargazer)
+stepwise_model_quadratic <- stepAIC(lm(ConvertedCompYearly ~ ., data = survey_data_selected), direction = "both")
+# Display the summary of the both direction stepwise model
+summary(stepwise_model_quadratic)
+stargazer(stepwise_model_quadratic, type = "text", align=TRUE)
 
 ```
+```{r}
+# Perform regression analysis using Natural Log of ConvertedCompYearly
+survey_data_selected$ConvertedCompYearly_log <- log(survey_data_selected$ConvertedCompYearly)
+# Perform stepwise regression with both directions
+stepwise_model_log <- stepAIC(lm(ConvertedCompYearly_log ~ ., data = survey_data_selected), direction = "both")
+# Display the summary of the both direction stepwise model
+summary(stepwise_model_log)
+stargazer(stepwise_model_log, type = "text", align=TRUE)
+
+```
+
