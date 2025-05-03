@@ -1,0 +1,429 @@
+---
+title: "CIS663ProjectSP25"
+author: "Vlad Krotov"
+date: "2025-02-26"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Reading Data from StackOverflow Files
+
+
+```{r rdataimport}
+survey_data <- read.csv("survey_results_public.csv")
+schema_data <- read.csv("survey_results_schema.csv")
+save(survey_data, schema_data, file = "survey_data.RData")
+
+
+```
+
+
+```{r load-data, message=FALSE, warning=FALSE}
+# Load the dataset
+load("survey_data.RData")
+
+# Check what objects were loaded
+ls()
+
+# View dataset structure
+str(survey_data)  # Correcting the mistake
+
+# View first few rows
+head(survey_data)
+
+```
+```{r}
+# Display all column names
+colnames(survey_data)
+```
+
+```{r}
+# Install required packages
+install.packages("tidyverse") 
+# Load libraries
+library(tidyverse)
+
+```
+
+```{r}
+# Selecting relevant columns based on project focus
+selected_columns <- c("Age", "Country", "EdLevel", "Employment", 
+                      "DevType", "YearsCodePro", "ConvertedCompYearly", "JobSat","WorkExp")
+survey_data_selected <- survey_data[selected_columns]
+
+```
+
+
+
+```{r}
+# Checking data after selection
+str(survey_data_selected)
+head(survey_data_selected)
+```
+
+
+```{r}
+# Checking the number of missing values per column
+colSums(is.na(survey_data_selected))
+
+```
+
+```{r}
+# Drop all missing values
+survey_data_selected <- survey_data_selected %>% drop_na()
+# Check the number of missing values again
+colSums(is.na(survey_data_selected))
+
+```
+
+```{r}
+# Filter for only united states
+survey_data_selected <- survey_data_selected %>% filter(Country == "United States of America")
+# Drop the Country column since it's no longer needed
+survey_data_selected <- survey_data_selected %>% select(-Country)
+```
+
+```{r}
+# Convert YearsCodePro to numeric
+survey_data_selected$YearsCodePro <- as.integer(gsub("[^0-9]", "", survey_data_selected$YearsCodePro))
+
+# Convert JobSat to numeric
+survey_data_selected$JobSat <- as.integer(gsub("[^0-9]", "", survey_data_selected$JobSat))
+
+# Convert ConvertedCompYearly to numeric
+survey_data_selected$ConvertedCompYearly <- as.integer(gsub("[^0-9]", "", survey_data_selected$ConvertedCompYearly))
+# Drop records with ConvertedCompYearly = 1
+survey_data_selected <- survey_data_selected %>% filter(ConvertedCompYearly > 5000)
+
+
+# Convert WorkExp to numeric
+survey_data_selected$WorkExp <- as.integer(gsub("[^0-9]", "", survey_data_selected$WorkExp))
+
+# Check the structure of the dataset after conversion
+str(survey_data_selected)
+# Check the first few rows
+head(survey_data_selected)
+```
+
+
+```{r}
+# Save cleaned dataset
+save(survey_data_selected, file = "survey_data_cleaned.RData")
+```
+
+```{r}
+# Load the cleaned dataset
+load("survey_data_cleaned.RData")
+# Check the structure of the cleaned dataset
+str(survey_data_selected)
+# Check the first few rows
+head(survey_data_selected)
+
+```
+
+```{r}
+# clean devtype column
+survey_data_selected <- survey_data_selected %>%
+  mutate(
+    # Normalize separators and whitespace
+    DevType = str_replace_all(DevType, "\\s*;\\s*", ";"),
+    DevType = str_trim(DevType),
+    # Split into list column
+    DevType_split = strsplit(DevType, ";")
+  ) %>%
+  # Trim whitespace for individual dev types
+  mutate(DevType_split = map(DevType_split, ~ str_trim(.x)))
+# Get unique dev types
+dev_types <- survey_data_selected$DevType_split %>%
+  unlist() %>%
+  unique() %>%
+  sort()
+# Drop I prefer not to say from dev types because it is vague and only represents small portion of data
+dev_types <- dev_types[dev_types != "I prefer not to say"]
+# Create one dummy variable where dev type containing "Developer" is 1 and all others are 0
+survey_data_selected$DevType_Developer <- as.integer(
+  sapply(survey_data_selected$DevType_split, function(x) any(grepl("Developer", x)))
+)
+# drop intermediate columns
+survey_data_selected <- survey_data_selected %>%
+  select(c(-DevType_split, -DevType))
+```
+
+
+```{r}
+
+# Clean the Employment column
+# list unique values in Employment column
+unique(survey_data_selected$Employment)
+
+# drop "Employed, full-time;Not employed, but looking for work" and "Employed, full-time;Not employed, and not looking for work" in Employment column
+survey_data_selected <- survey_data_selected %>%
+  filter(!Employment %in% c(
+    "Employed, full-time;Not employed, but looking for work",
+    "Employed, full-time;Not employed, and not looking for work"
+  ))
+
+# Create binary columns for each employment type
+# Normalize Employment column
+survey_data_selected$Employment <- str_replace_all(survey_data_selected$Employment, "\\s*;\\s*", ";")
+survey_data_selected$Employment <- str_trim(survey_data_selected$Employment)
+
+# Split Employment column into a list of employment types
+survey_data_selected$Employment_split <- strsplit(survey_data_selected$Employment, ";")
+# Trim whitespace for individual employment types
+survey_data_selected$Employment_split <- lapply(survey_data_selected$Employment_split, function(x) {
+  x <- str_trim(x)
+  x[x != ""]  # Remove empty strings
+})
+
+# get unique employment types
+employment_types <- unique(unlist(survey_data_selected$Employment_split))
+# Create binary columns for each employment type
+for (type in employment_types) {
+  survey_data_selected[[type]] <- as.integer(
+    sapply(survey_data_selected$Employment_split, function(x) type %in% x)
+  )
+}
+
+
+# Rename columns to remove spaces and special characters
+colnames(survey_data_selected) <- gsub(" ", "_", colnames(survey_data_selected))
+colnames(survey_data_selected) <- gsub(",", "", colnames(survey_data_selected))
+colnames(survey_data_selected) <- gsub("-", "_", colnames(survey_data_selected))
+
+
+
+# Drop the intermediate Employment_split column
+survey_data_selected <- survey_data_selected %>%
+  select(-Employment_split)
+# Drop Employment column since it's no longer needed
+survey_data_selected <- survey_data_selected %>%
+  select(-Employment)
+# Drop Student_full_time column, Student_part_time column and Retired since they are not needed
+survey_data_selected <- survey_data_selected %>%
+  select(-Student_full_time, -Student_part_time, -Retired, -Not_employed_but_looking_for_work, -Employed_part_time, -Independent_contractor_freelancer_or_self_employed)
+
+```
+
+
+```{r}
+# List unique values in EdLevel column
+unique(survey_data_selected$EdLevel)
+
+# Drop records with Something else in EdLevel
+survey_data_selected <- survey_data_selected %>%
+  filter(EdLevel != "Something else")
+
+# Encode Education Level as ranked numeric variable
+survey_data_selected <- survey_data_selected %>%
+  mutate(EdLevel = as.integer(factor(EdLevel, levels = c(
+    "Primary/elementary school",
+    "Secondary school (e.g. American high school, German Realschule or Gymnasium, etc.)",
+    "Some college/university study without earning a degree",
+    "Associate degree (A.A., A.S., etc.)",
+    "Bachelor’s degree (B.A., B.S., B.Eng., etc.)",
+    "Master’s degree (M.A., M.S., M.Eng., MBA, etc.)",
+    "Professional degree (JD, MD, Ph.D, Ed.D, etc.)"
+  ), ordered = TRUE)))
+```
+
+```{r}
+# drop Age that is prefer not to say since its vague and only represents small portion of data
+survey_data_selected <- survey_data_selected %>%
+  filter(Age != "Prefer not to say")
+
+#Encode Age as ranked numeric variable
+survey_data_selected <- survey_data_selected %>%
+  mutate(Age = as.integer(factor(Age, levels = c(
+    "Under 18 years old",
+    "18-24 years old",
+    "25-34 years old",
+    "35-44 years old",
+    "45-54 years old",
+    "55-64 years old",
+    "65 years or older"
+  ), ordered = TRUE)))
+
+
+```
+
+```{r}
+# Checking final structure
+str(survey_data_selected)
+head(survey_data_selected)
+
+# Saving cleaned encoded data
+save(survey_data_selected, file = "survey_data_cleaned_encoded.RData")
+
+```
+
+```{r}
+# Load the cleaned and encoded dataset
+load("survey_data_cleaned_encoded.RData")
+
+# check for multicollinearity
+library(car)
+# Check for multicollinearity using VIF
+vif_model <- lm(JobSat ~ Age + EdLevel + DevType_Developer + ConvertedCompYearly + YearsCodePro + WorkExp + Employed_full_time, data = survey_data_selected)
+vif(vif_model)
+# barplot for VIF values
+vif_values <- vif(vif_model)
+# Create a barplot for VIF values
+barplot(vif_values, main = "VIF Values", horiz = TRUE, col = "steelblue")
+# Add a vertical line at VIF = 5
+abline(v = 5, col = "red", lty = 2)
+
+vif_model2 <- lm(JobSat ~ Age + EdLevel + DevType_Developer + ConvertedCompYearly + WorkExp + Employed_full_time, data = survey_data_selected)
+vif(vif_model2)
+# barplot for VIF values
+vif_values2 <- vif(vif_model2)
+# Create a barplot for VIF values
+barplot(vif_values2, main = "VIF Values", horiz = TRUE, col = "steelblue")
+# Add a vertical line at VIF = 5
+abline(v = 5, col = "red", lty = 2)
+
+vif_model3 <- lm(JobSat ~ Age + EdLevel + DevType_Developer + ConvertedCompYearly + YearsCodePro + Employed_full_time, data = survey_data_selected)
+vif(vif_model3)
+# barplot for VIF values
+vif_values3 <- vif(vif_model3)
+# Create a barplot for VIF values
+barplot(vif_values3, main = "VIF Values", horiz = TRUE, col = "steelblue")
+# Add a vertical line at VIF = 5
+abline(v = 5, col = "red", lty = 2)
+
+# Check for multicollinearity using correlation matrix
+correlation_matrix <- cor(survey_data_selected[, c("Age", "EdLevel", "DevType_Developer", "ConvertedCompYearly", "YearsCodePro", "WorkExp")], use = "pairwise.complete.obs")
+# Display the correlation matrix as table
+correlation_matrix
+# Display the correlation matrix as table with stargazer
+library(stargazer)
+stargazer(correlation_matrix, type = "text", title = "Correlation Matrix", digits = 4)
+
+
+# Explore job satisfaction
+library(ggplot2)
+ggplot(survey_data_selected, aes(x = JobSat)) +
+  geom_bar() +
+  labs(title = "Job Satisfaction Distribution", x = "Job Satisfaction", y = "Count") +
+  theme_minimal()
+# Display summary statistics for JobSat
+summary(survey_data_selected$JobSat)
+
+
+# perform regression analysis with JobSat as dependent variable using stepwise regression
+library(MASS)
+# Perform stepwise regression with both directions
+stepwise_model_both <- stepAIC(lm(JobSat ~ ., data = survey_data_selected), direction = "both")
+# Display the summary of the both direction stepwise model
+summary(stepwise_model_both)
+stargazer(stepwise_model_both, type = "text", align=TRUE)
+
+# Explore the relationship between JobSat and ConvertedCompYearly
+ggplot(survey_data_selected, aes(x = ConvertedCompYearly, y = JobSat)) +
+  geom_point() +
+  geom_smooth(method = "auto", se = FALSE) +
+  labs(title = "Job Satisfaction by Yearly Compensation", x = "Yearly Compensation", y = "Job Satisfaction") +
+  theme_minimal()
+
+# Explore the relationship between JobSat and YearsCodePro using histogram
+ggplot(survey_data_selected, aes(x = YearsCodePro, y = JobSat)) +
+  geom_point() +
+  geom_smooth(method = "auto", se = FALSE) +
+  labs(title = "Job Satisfaction by Years of Professional Coding Experience", x = "Years of Professional Coding Experience", y = "Job Satisfaction") +
+  theme_minimal()
+
+# Explore the relationship between JobSat and Age with barplot
+ggplot(survey_data_selected, aes(x = Age, fill = as.factor(JobSat))) +
+  geom_bar(position = "dodge") +
+  labs(title = "Job Satisfaction by Age", x = "Age", y = "Count") +
+  theme_minimal() +
+  scale_fill_discrete(name = "Job Satisfaction")
+
+# Explore the relationship between JobSat and Employment_full_time with histogram
+ggplot(survey_data_selected, aes(x = JobSat, fill = as.factor(Employed_full_time))) +
+  geom_histogram(binwidth = 1, position = "identity", alpha = 0.5) +
+  labs(title = "Job Satisfaction by Employment Status", x = "Job Satisfaction", y = "Count") +
+  theme_minimal() +
+  scale_fill_discrete(name = "Employment Status")
+
+```
+
+```{r}
+# perform regression analysis with ConvertedCompYearly as dependent variable
+
+# Check for multicollinearity using VIF
+vif_model_comp <- lm(ConvertedCompYearly ~ Age + EdLevel + DevType_Developer + YearsCodePro + JobSat + WorkExp + Employed_full_time, data = survey_data_selected)
+vif(vif_model_comp)
+# barplot for VIF values
+vif_values_comp <- vif(vif_model_comp)
+# Create a barplot for VIF values
+barplot(vif_values_comp, main = "VIF Values for ConvertedCompYearly", horiz = TRUE, col = "steelblue")
+# Add a vertical line at VIF = 5
+abline(v = 5, col = "red", lty = 2)
+
+# drop  YearsCodepro and check for multicollinearity
+vif_model_comp2 <- lm(ConvertedCompYearly ~ Age + EdLevel + DevType_Developer + JobSat + WorkExp + Employed_full_time, data = survey_data_selected)
+vif(vif_model_comp2)
+# barplot for VIF values
+vif_values_comp2 <- vif(vif_model_comp2)
+# Create a barplot for VIF values
+barplot(vif_values_comp2, main = "VIF Values for ConvertedCompYearly", horiz = TRUE, col = "steelblue")
+# Add a vertical line at VIF = 5
+abline(v = 5, col = "red", lty = 2)
+
+# drop workexp and check for multicollinearity
+vif_model_comp3 <- lm(ConvertedCompYearly ~ Age + EdLevel + DevType_Developer + JobSat + YearsCodePro +  Employed_full_time, data = survey_data_selected)
+vif(vif_model_comp3)
+# barplot for VIF values
+vif_values_comp3 <- vif(vif_model_comp3)
+# Create a barplot for VIF values
+barplot(vif_values_comp3, main = "VIF Values for ConvertedCompYearly", horiz = TRUE, col = "steelblue")
+# Add a vertical line at VIF = 5
+abline(v = 5, col = "red", lty = 2)
+
+# Check for multicollinearity using correlation matrix
+correlation_matrix_comp <- cor(survey_data_selected[, c("Age", "EdLevel", "JobSat","DevType_Developer", "YearsCodePro", "WorkExp")], use = "pairwise.complete.obs")
+# Display the correlation matrix as table
+correlation_matrix_comp
+# Display the correlation matrix as table with stargazer
+library(stargazer)
+stargazer(correlation_matrix_comp, type = "text", title = "Correlation Matrix for ConvertedCompYearly", digits = 4)
+
+# Explore ConvertedCompYearly
+ggplot(survey_data_selected, aes(x = ConvertedCompYearly)) +
+  geom_histogram(binwidth = 10000, fill = "steelblue", color = "black") +
+  labs(title = "Distribution of Yearly Compensation", x = "Yearly Compensation", y = "Count") +
+  theme_minimal()
+summary(survey_data_selected$ConvertedCompYearly)
+
+# Perform regression analysis with ConvertedCompYearly as dependent variable using stepwise regression
+stepwise_model_comp <- stepAIC(lm(ConvertedCompYearly ~ ., data = survey_data_selected), direction = "both")
+# Display the summary of the both direction stepwise model
+summary(stepwise_model_comp)
+stargazer(stepwise_model_comp, type = "text", align=TRUE)
+
+
+# scatter plot age and compensation
+ggplot(survey_data_selected, aes(x = Age, y = ConvertedCompYearly)) +
+  geom_point() +
+  geom_smooth(method = "auto", se = FALSE) +
+  labs(title = "Yearly Compensation by Age", x = "Age", y = "Yearly Compensation") +
+  theme_minimal()
+# scatter plot yearscodepro and compensation
+ggplot(survey_data_selected, aes(x = YearsCodePro, y = ConvertedCompYearly)) +
+  geom_point() +
+  geom_smooth(method = "auto", se = FALSE) +
+  labs(title = "Yearly Compensation by Years of Professional Coding Experience", x = "Years of Professional Coding Experience", y = "Yearly Compensation") +
+  theme_minimal()
+# Explore the relationship between ConvertedCompYearly and EdLevel with histogram
+ggplot(survey_data_selected, aes(x = ConvertedCompYearly, fill = as.factor(EdLevel))) +
+  geom_histogram(binwidth = 10000, position = "identity", alpha = 0.5) +
+  labs(title = "Yearly Compensation by Education Level", x = "Yearly Compensation", y = "Count") +
+  theme_minimal() +
+  scale_fill_discrete(name = "Education Level")
+# scatter plot age and compensation
+
+```
