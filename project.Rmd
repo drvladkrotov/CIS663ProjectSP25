@@ -33,31 +33,30 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Reading Data from StackOverflow Files
 
 
-```{r rdataimport, include=FALSE}}
+```{r rdataimport, eval=FALSE}
 survey_data <- read.csv("survey_results_public.csv")
 schema_data <- read.csv("survey_results_schema.csv")
 save(survey_data, schema_data, file = "survey_data.RData")
 
-
 ```
 
 
-```{r load-data, message=FALSE, warning=FALSE}
+```{r load-data, echo=TRUE, message=FALSE, warning=FALSE}
 # Load the dataset
 load("survey_data.RData")
 
 # Check what objects were loaded
-ls()
+#ls()
 
 # View dataset structure
-str(survey_data)  # Correcting the mistake
+#str(survey_data)  
 
 # View first few rows
 head(survey_data)
 
 ```
 
-```{r}
+```{r, include=FALSE}
 # Display all column names
 colnames(survey_data)
 ```
@@ -65,9 +64,9 @@ colnames(survey_data)
 ## Methodology
 On importing the Data in R, the first step is to select relevant columns based on the project focus. The selected columns include Age, Country, EdLevel, Employment, DevType, YearsCodePro, ConvertedCompYearly, JobSat, and WorkExp. The next step is to check the number of missing values per column and drop all missing values. After that, we filter for only United States-based developers and drop the Country column since it's no longer needed. The next step is to convert YearsCodePro, JobSat, ConvertedCompYearly and WorkExp to numeric values. We also drop records with ConvertedCompYearly less than 5000.This was done because some observations had single digit values as yearly income and this was not realistic. The cut-off value of 5000 minimum yearly compensation was arrived at taking into consideration the state with the lowest minimum wage (Georgia and Wyoming) at $5.15 and minimum working hours of 20 per week.   The next step is to clean the DevType column by normalizing separators and whitespace, splitting it into a list column, and trimming whitespace for individual dev types. We also create a dummy variable where dev type containing "Developer" is 1 and all others are 0. The next step is to clean the Employment column by dropping certain values and creating binary columns for each employment type. We also rename columns to remove spaces and special characters. Finally, we drop unnecessary columns and encode Education Level and Age as ranked numeric variables.
 
-```{r}
+```{r include=FALSE}
 # Install required packages
-install.packages("tidyverse") 
+#install.packages("tidyverse") 
 # Load libraries
 library(tidyverse)
 
@@ -469,8 +468,8 @@ ggplot(survey_data_selected, aes(x = YearsCodePro, y = JobSat)) +
   labs(title = "Job Satisfaction vs. Years of Coding Experience")
 
 # Job Satisfaction ~ Age
-model_linear <- lm(JobSat ~ Age + YearsCodePro, data = survey_data_selected)
-model_quadratic <- lm(JobSat ~ Age + I(Age^2) + YearsCodePro, data = survey_data_selected)
+model_linear <- lm(JobSat ~ Age, data = survey_data_selected)
+model_quadratic <- lm(JobSat ~ Age + I(Age^2), data = survey_data_selected)
 
 summary(model_linear)
 summary(model_quadratic)
@@ -486,4 +485,28 @@ ggplot(survey_data_selected, aes(x = Age, y = JobSat)) +
 
 ## Results
 ### Job Satisfaction
-The stepwise regression analysis for job satisfaction revealed that the final model included Age,YearsCodePro, ConvertedCompYearly, and Employed_full_time as significant predictors. The model asserts that age was negatively associated with job satisfaction (B=-0.13,p=0.035) suggesting that older developers tend to report lower job satisfaction levels compared to their younger counterparts. 
+The stepwise regression analysis for job satisfaction revealed that the final model included Age,YearsCodePro, ConvertedCompYearly, and Employed_full_time as significant predictors. The model asserts that age was negatively associated with job satisfaction (B=-0.13,p=0.035) suggesting that older developers tend to report lower job satisfaction levels compared to their younger counterparts.
+The model also indicated that years of professional coding experience had a positive and significant impact on job satifaction (B=0.037,p<0.001), suggesting that satisfaction increases with professional experience.Yearly compensation also shows a positive association with job satisfaction (B=1.24e-6, p=0.001), supporting the view that higher compensation is associated with greater job satisfaction. Finally, the model indicates that full-time employment status is positively associated with job satisfaction (B=0.47,p=0.027), suggesting that full-time employees tend to report higher job satisfaction levels compared to part-time or contract workers.Overall, the model was statistically significant (F(4,3180) = 16.69, p<0.001), though the explained variance was relatively low (R^2 = 0.021), suggesting that while the identified variables contribute to job satisfaction, other unmeasured factors also play a role. The results suggest that age has an inverse relationship with job satisfaction, indicating potential bias against older developers in the tech industry.
+
+### Yearly Compensation
+A stepwise linear regression model was used to identify significant predictors of ConvertedCompYearly (yearly compensation). The final model included Age, Education Level, Years of Professional Coding Experience, Job Satisfaction, Developer Role, and Full-Time Employment Status.Age had a significant negative effect on compensation (β = -10,088, p < 0.001), suggesting that, holding other variables constant, older developers tend to earn less.Education Level and YearsCodePro were both positively associated with salary (β = 9,096 and 3,367 respectively; p < 0.001), consistent with expectations that higher education and experience increase earnings.Job Satisfaction also had a significant positive effect (β = 2,801, p < 0.001), indicating that more satisfied developers tend to earn more. Interestingly, identifying as a developer was negatively associated with compensation (β = -9,260, p = 0.028), possibly due to non-developer roles (e.g., managers, executives) having higher pay scales. And finally, Full-time employment significantly affects compensation (β = 34,761, p < 0.001), confirming that full-time roles pay substantially more than other employment types.The model was statistically significant (F(6, 3178) = 40.95, p < 0.0001), with an R^2 of 0.072, indicating that the model explains about 7.2% of the variance in yearly compensation.These results suggest that while skills, education, and job satisfaction are important drivers of compensation, age still negatively impacts earnings even after controlling for key professional qualifications. This pattern is consistent with broader concerns about ageism in the tech workforce.
+
+### Quadratic Regression
+To test for a nonlinear relationship between age and job satisfaction, a quadratic regression model was compared to a standard linear model. The linear model included Age and Years of Professional Coding Experience (YearsCodePro) as predictors of job satisfaction.The quadratic model, which included both Age and Age², provided a significantly better fit than the linear model, as confirmed by the ANOVA test.The quadratic model indicated that job satisfaction increased with age up to a certain point, after which it began to decline. This suggests that while older developers may initially experience higher job satisfaction, this trend reverses at some point in their careers. The model's coefficients indicated that the relationship between age and job satisfaction is not strictly linear, highlighting the complexity of factors influencing job satisfaction over time.The quadratic term (Age²) captures the inverted-U shape seen in the LOESS plot and the quadratic fit visualization.
+
+## Conclusion
+The analysis of the Stack Overflow Annual Developer Survey data for 2024 revealed significant insights into the impact of age on job satisfaction and compensation in the tech industry. The findings suggest that older developers tend to earn lower salaries and report lower job satisfaction compared to their younger counterparts. The results also indicate that years of professional coding experience, education level, and full-time employment status are positively associated with both job satisfaction and compensation. The quadratic regression analysis further suggests a complex relationship between age and job satisfaction, indicating that while older developers may initially experience higher job satisfaction, this trend reverses at some point in their careers. Overall, these findings highlight the need for policy makers to strengthen enforcement of the Age Discrimination in Employment Act (ADEA) and promote age inclusivity in the tech industry.
+
+## References
+Discrimination: What it is and how to cope. (2024, May 16). https://www.apa.org. https://www.apa.org/topics/racism-bias-discrimination/types-stress
+
+Kotler, S. (2015). “Is Silicon Valley Ageist Or Just Smart?”, Forbes, Retrieved from https://www.forbes.com/sites/stevenkotler/2015/02/14/is-silicon-valley-ageist-or-just-smart/?sh=5fb0b05eed65
+
+Sevilla, C. (2019). “Everyday ageism in the tech industry”, CWJobs. Retreived from https://www.cwjobs.co.uk/advice/ageism-in-tech
+
+Stampler, L (2014). “Ageism in Silicon Valley Is Causing an Uptick in Plastic Surgeries”, Time, Retrieved from https://time.com/35524/ageism-in-silicon-valley-is-causing-an-uptick-in-plastic-surgeries/
+
+Stanford Encyclopedia of Philosophy (2020). “Discrimination”. Retrieved from https://plato.stanford.edu/entries/discrimination/
+
+- UN General Assembly. (1966). International Covenant on Civil and Political Rights. Retrieved from https://www.ohchr.org/en/instruments-mechanisms/international-human-rights-instruments/international-covenant-civil-and-political-rights
+
