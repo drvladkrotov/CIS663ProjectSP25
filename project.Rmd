@@ -5,6 +5,27 @@ date: "2025-02-26"
 output: word_document
 ---
 
+
+## Abstract
+A bias or discrimination against persons based on their age is a significant issue in the workplace. This project aims to analyze the impact of age on job satisfaction and compensation in the tech industry. We investigate whether such discrimination exists by analyzing data from the Stack Overflow Annual Developer Survey for 2024, focusing on U.S.-based developers only. Two hypotheses are tested: (1) older developers tend to earn lower salaries, and (2) they report lower job satisfaction compared to their younger counterparts. The analysis will focus on understanding how age influences job satisfaction and compensation, while also considering other factors such as education level, years of professional coding experience, and employment status. By examining these relationships, we aim to provide insights into the potential biases faced by older developers in the tech industry.The entire project is conducted using R for data preprocessing, regression analysis as well as visualizations to support the findings. Key variables such as age, education level, employment type, developer type, job satisfaction, compensation, and experience were numerically encoded for the purpose of this analysis. Multicollinearity is addressed using variance inflation factors (VIF), and a stepwise regression is used to determine significant predictors of job satisfaction and yearly compensation. The results suggest age has an inverse relationship with job satisfaction and compensation, indicating potential bias against older developers. The results also assert that, compensation, years of professional coding experience, and full-time employment status are positively and significantly associated with job satisfaction. Furthermore, job satisfaction, age, education level, and full-time employment status significantly predict yearly compensation. The findings highlight the need for policy makers to strengthen enforcement of the Age Discrimination in Employment Act (ADEA).
+
+## Introduction
+Ageism is broadly defined as discrimination against individuals based on age, has become an increasingly concerning issue in the technology industry. Unlike in other industries where the signs of age-related bias typically emerge around the age of 41, IT professionals may begin facing such discrimination as early as age 29, according to a recent CWJobs survey (Sevilla, 2019). This early onset of discrimination reflects a deep-rooted preference for youth within the tech industry, where innovation is often equated with being young and agile. The tech industry is notorious for its fast-paced environment, where the latest trends and technologies are constantly evolving. This rapid change can create a perception that older workers may not be as adaptable or up-to-date with the latest skills, leading to age-related biases in hiring and promotion decisions.This bias is reinforced by both cultural narratives and industry practices like the idiomatic expression "you can't teach an old new tricks", which generally means that it is difficult for older people to learn new things.  Popular media spotlights like “30 under 30” lists celebrate youth as a hallmark of success, inadvertently sidelining older professionals (Sevilla, 2019). Controversial statements by technology leaders such as “young people are just smarter” by Mark Zuckerberg reinforce ageism as well (Kotler, 2015). Addressing ageism in tech is critical for several reasons. First, It is illegal under US law to discriminate based on age, just like any other form of discrimination. It can also lead to a loss of valuable talent, experience and mentoring as older workers may be pushed out of the industry or discouraged from pursuing tech careers altogether. Ageism can also create a toxic work environment that stifles collaboration and innovation, as younger and older workers may be pitted against each other rather than working together to solve problems. Furthermore, ageism can have serious consequences for the mental health and well-being of older workers, who may feel undervalued and marginalized in their workplaces.Finally, there is a strong ethical imperative to ensure fairness and equal opportunity in a field that is otherwise dominated by young professionals. Promoting age inclusivity is not just a legal obligation but buildnig a just and equitable workplace culture.
+
+## Literature Review
+Ageism, or discrimination based on age, is widely recognized as a violation of human rights. Article 26 of the International Covenant on Civil and Political Rights mandates equal protection against all forms of discrimination, including age (UN General Assembly, 1966). Discrimination is the unfair or prejudicial treatment of people and groups based on characteristics such as race, gender, age, or sexual orientation(“Discrimination: What It Is and How to Cope,” 2024). In the context of the workplace environment, age discrimination can be direct, such as refusing to hire older candidates, or indirect, where seemingly neutral policies disproportionately disadvantage older workers (Stanford Encyclopedia of Philosophy, 2020). AN example is "crunch-time" culture, which is prevalent in the tech industry and often requires employees to work long hours, making it difficult for older workers with family responsibilities to keep up. This can lead to a perception that older workers are less committed or less capable of handling the demands of the job, further perpetuating age-related biases (Sevilla, 2019). Additionally, the burden of proof for age discrimination cases is often placed on the employee, making it difficult to prove discrimination occurred (Stanford Encyclopedia of Philosophy, 2020). Despite these challenges, there have been some positive developments in recent years. For example, some companies have implemented diversity and inclusion initiatives that specifically address ageism in the workplace. These initiatives aim to create a more inclusive work environment by promoting intergenerational collaboration and mentorship programs (Sevilla, 2019).
+
+## Theory
+If ageism exists in the technology industry, the following hypothesis are expected to be true:
+
+  H1: Older developers are likely to earn a lower salary in comparison to younger employees
+
+  H2: Older developers are likely to report lower job satisfaction than younger employees
+
+
+## Data
+The data used in this project is sourced from the Stack Overflow Annual Developer Survey for 2024. The survey is a comprehensive questionnaire that collects information on various aspects of the developer community, including demographics, job satisfaction, compensation, and work experience. The dataset includes about 70,000 responses from developers worldwide, but for this analysis, we will focus specifically on U.S.-based developers. The survey data is publicly available and can be accessed through the Stack Overflow website (https://survey.stackoverflow.co/2024/). The dataset contains a wide range of variables, including age, education level, employment status, developer type, job satisfaction, compensation, and years of professional coding experience. These variables will be used to analyze the relationship between age and job satisfaction/compensation. The data is in CSV format and can be easily imported into R for analysis. The survey data is structured in a way that allows for easy manipulation and analysis using R's data manipulation libraries.
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -12,7 +33,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Reading Data from StackOverflow Files
 
 
-```{r rdataimport}
+```{r rdataimport, include=FALSE}}
 survey_data <- read.csv("survey_results_public.csv")
 schema_data <- read.csv("survey_results_schema.csv")
 save(survey_data, schema_data, file = "survey_data.RData")
@@ -35,10 +56,14 @@ str(survey_data)  # Correcting the mistake
 head(survey_data)
 
 ```
+
 ```{r}
 # Display all column names
 colnames(survey_data)
 ```
+
+## Methodology
+On importing the Data in R, the first step is to select relevant columns based on the project focus. The selected columns include Age, Country, EdLevel, Employment, DevType, YearsCodePro, ConvertedCompYearly, JobSat, and WorkExp. The next step is to check the number of missing values per column and drop all missing values. After that, we filter for only United States-based developers and drop the Country column since it's no longer needed. The next step is to convert YearsCodePro, JobSat, ConvertedCompYearly and WorkExp to numeric values. We also drop records with ConvertedCompYearly less than 5000.This was done because some observations had single digit values as yearly income and this was not realistic. The cut-off value of 5000 minimum yearly compensation was arrived at taking into consideration the state with the lowest minimum wage (Georgia and Wyoming) at $5.15 and minimum working hours of 20 per week.   The next step is to clean the DevType column by normalizing separators and whitespace, splitting it into a list column, and trimming whitespace for individual dev types. We also create a dummy variable where dev type containing "Developer" is 1 and all others are 0. The next step is to clean the Employment column by dropping certain values and creating binary columns for each employment type. We also rename columns to remove spaces and special characters. Finally, we drop unnecessary columns and encode Education Level and Age as ranked numeric variables.
 
 ```{r}
 # Install required packages
@@ -56,14 +81,11 @@ survey_data_selected <- survey_data[selected_columns]
 
 ```
 
-
-
 ```{r}
 # Checking data after selection
 str(survey_data_selected)
 head(survey_data_selected)
 ```
-
 
 ```{r}
 # Checking the number of missing values per column
@@ -248,7 +270,7 @@ survey_data_selected <- survey_data_selected %>%
 
 
 ```
-
+The final dataset was checked for structure and the first few rows were displayed to ensure that the data was cleaned and encoded correctly. The cleaned and encoded dataset was then saved for further analysis.
 ```{r}
 # Checking final structure
 str(survey_data_selected)
@@ -258,6 +280,8 @@ head(survey_data_selected)
 save(survey_data_selected, file = "survey_data_cleaned_encoded.RData")
 
 ```
+
+Variance Inflation Factor (VIF) and correlation matrices were used to check for multicollinearity using job satisfaction as the dependent variable before final regression modeling to ensure the reliability of the results. The VIF values were plotted on a bar plot to visualize the multicollinearity. A VIF value greater than 5 indicates a potential multicollinearity issue. The correlation matrix was also displayed as a table using the stargazer package for better readability.
 
 ```{r}
 # Load the cleaned and encoded dataset
@@ -295,13 +319,17 @@ abline(v = 5, col = "red", lty = 2)
 
 # Check for multicollinearity using correlation matrix
 correlation_matrix <- cor(survey_data_selected[, c("Age", "EdLevel", "DevType_Developer", "ConvertedCompYearly", "YearsCodePro", "WorkExp")], use = "pairwise.complete.obs")
-# Display the correlation matrix as table
-correlation_matrix
+
 # Display the correlation matrix as table with stargazer
 library(stargazer)
 stargazer(correlation_matrix, type = "text", title = "Correlation Matrix", digits = 4)
+```
 
+In the initial model,some VIF values were above the commonly accepted threshold of 5, indicating potential multicollinearity issues (YearsCodePro and WorkExp). The model was refined by dropping the YearsCodePro first and subsequently the WorkExp variable, which resulted in lower VIF values. The latter variable resulted in lowest VIF values, hence WorkExp was dropped from the analysis. The correlation matrix was also checked to ensure that there were no strong correlations between the independent variables.
+Overall, the VIF values and correlation matrix indicated that multicollinearity was not a significant issue in the final mode and all the selected predictors were appropriate to be included in the models. The final model included Age, EdLevel, DevType_Developer, ConvertedCompYearly, and Employed_full_time as independent variables.
 
+The distribution of job satisfaction was explored using a bar plot. The plot showed the frequency of each job satisfaction level, providing insights into the overall job satisfaction levels among developers. To identify the significant factors influencing job satisfaction, a stepwise regression analysis was performed. The stepwise regression model was built using the lm() function in R, with JobSat as the dependent variable and all other variables as independent variables. The stepAIC() function from the MASS package was used to perform the stepwise regression, which automatically selects the best model based on AIC criteria. The summary of the final model was displayed using the stargazer package for better readability.
+```{r}
 # Explore job satisfaction
 library(ggplot2)
 ggplot(survey_data_selected, aes(x = JobSat)) +
@@ -316,6 +344,7 @@ library(MASS)
 stepwise_model_both <- stepAIC(lm(JobSat ~ ., data = survey_data_selected), direction = "both")
 # Display the summary of the both direction stepwise model
 summary(stepwise_model_both)
+stargazer(stepwise_model_both, type = "text", align=TRUE)
 
 # Explore the relationship between JobSat and ConvertedCompYearly
 ggplot(survey_data_selected, aes(x = ConvertedCompYearly, y = JobSat)) +
@@ -347,6 +376,7 @@ ggplot(survey_data_selected, aes(x = JobSat, fill = as.factor(Employed_full_time
 
 ```
 
+For the second model, the same process was followed to check for multicollinearity using VIF and correlation matrices with ConvertedCompYearly as the dependent variable. The VIF values were plotted on a bar plot to visualize the multicollinearity. A VIF value greater than 5 indicates a potential multicollinearity issue. The correlation matrix was also displayed as a table using the stargazer package for better readability. 
 ```{r}
 # perform regression analysis with ConvertedCompYearly as dependent variable
 
@@ -387,7 +417,10 @@ correlation_matrix_comp
 # Display the correlation matrix as table with stargazer
 library(stargazer)
 stargazer(correlation_matrix_comp, type = "text", title = "Correlation Matrix for ConvertedCompYearly", digits = 4)
+```
 
+The distribution of ConvertedCompYearly was explored using a histogram. The histogram showed the distribution of yearly compensation among developers, providing insights into the overall compensation levels. To identify the significant factors influencing ConvertedCompYearly, a stepwise regression analysis was performed. The stepwise regression model was built using the lm() function in R, with ConvertedCompYearly as the dependent variable and all other variables as independent variables. The stepAIC() function from the MASS package was used to perform the stepwise regression, which automatically selects the best model based on AIC criteria. The summary of the final model was displayed using the stargazer package for better readability.
+```{r}
 # Explore ConvertedCompYearly
 ggplot(survey_data_selected, aes(x = ConvertedCompYearly)) +
   geom_histogram(binwidth = 10000, fill = "steelblue", color = "black") +
@@ -400,7 +433,6 @@ stepwise_model_comp <- stepAIC(lm(ConvertedCompYearly ~ ., data = survey_data_se
 # Display the summary of the both direction stepwise model
 summary(stepwise_model_comp)
 stargazer(stepwise_model_comp, type = "text", align=TRUE)
-
 
 # scatter plot age and compensation
 ggplot(survey_data_selected, aes(x = Age, y = ConvertedCompYearly)) +
@@ -422,34 +454,36 @@ ggplot(survey_data_selected, aes(x = ConvertedCompYearly, fill = as.factor(EdLev
   scale_fill_discrete(name = "Education Level")
 ```
 
+To explore whether the relationship between age and job satisfaction is nonlinear, a quadratic regression model was estimated and compared to a standard linear model. Initial LOESS plots suggested a curved relationship, with job satisfaction increasing up to a point and then declining with age.
 ```{r}
-# Perform Quadratic regression analysis with ConvertedCompYearly as dependent variable
-survey_data_selected$Age_squared <- survey_data_selected$Age^2
-survey_data_selected$YearsCodePro_squared <- survey_data_selected$YearsCodePro^2
-survey_data_selected$WorkExp_squared <- survey_data_selected$WorkExp^2
-survey_data_selected$ConvertedCompYearly_squared <- survey_data_selected$ConvertedCompYearly^2
-survey_data_selected$JobSat_squared <- survey_data_selected$JobSat^2
-survey_data_selected$EdLevel_squared <- survey_data_selected$EdLevel^2
-survey_data_selected$DevType_Developer_squared <- survey_data_selected$DevType_Developer^2
-survey_data_selected$Employed_full_time_squared <- survey_data_selected$Employed_full_time^2
+# Quadratic regression analysis
+# Example for Job Satisfaction
+ggplot(survey_data_selected, aes(x = Age, y = JobSat)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(method = "loess", se = FALSE) +
+  labs(title = "Job Satisfaction vs. Age")
 
-# Perform stepwise regression with both directions
-library(MASS)
-library(stargazer)
-stepwise_model_quadratic <- stepAIC(lm(ConvertedCompYearly ~ ., data = survey_data_selected), direction = "both")
-# Display the summary of the both direction stepwise model
-summary(stepwise_model_quadratic)
-stargazer(stepwise_model_quadratic, type = "text", align=TRUE)
+ggplot(survey_data_selected, aes(x = YearsCodePro, y = JobSat)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(method = "loess", se = FALSE) +
+  labs(title = "Job Satisfaction vs. Years of Coding Experience")
+
+# Job Satisfaction ~ Age
+model_linear <- lm(JobSat ~ Age + YearsCodePro, data = survey_data_selected)
+model_quadratic <- lm(JobSat ~ Age + I(Age^2) + YearsCodePro, data = survey_data_selected)
+
+summary(model_linear)
+summary(model_quadratic)
+anova(model_linear, model_quadratic)  # Compare fit
+# Plot the fitted values
+ggplot(survey_data_selected, aes(x = Age, y = JobSat)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(method = "lm", formula = y ~ poly(x, 2), se = FALSE) +
+  labs(title = "Job Satisfaction vs. Age (Quadratic Fit)") +
+  theme_minimal()
 
 ```
-```{r}
-# Perform regression analysis using Natural Log of ConvertedCompYearly
-survey_data_selected$ConvertedCompYearly_log <- log(survey_data_selected$ConvertedCompYearly)
-# Perform stepwise regression with both directions
-stepwise_model_log <- stepAIC(lm(ConvertedCompYearly_log ~ ., data = survey_data_selected), direction = "both")
-# Display the summary of the both direction stepwise model
-summary(stepwise_model_log)
-stargazer(stepwise_model_log, type = "text", align=TRUE)
 
-```
-
+## Results
+### Job Satisfaction
+The stepwise regression analysis for job satisfaction revealed that the final model included Age,YearsCodePro, ConvertedCompYearly, and Employed_full_time as significant predictors. The model asserts that age was negatively associated with job satisfaction (B=-0.13,p=0.035) suggesting that older developers tend to report lower job satisfaction levels compared to their younger counterparts. 
